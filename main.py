@@ -1,12 +1,11 @@
 """
-Post process file for Cosmos++ thin disk simulation.
-
+Processing file for hydrodynamic simulation of toroidal fluid 
 """
 
 import h5py
 import numpy as np
 import matplotlib.pyplot as plt
-import main_pp_suplementary
+import post_process
 
 ## Setup Matching Original Simulation ##
 ##------------------------------------##
