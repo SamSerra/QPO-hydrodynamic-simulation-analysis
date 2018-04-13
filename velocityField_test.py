@@ -7,8 +7,8 @@ import pdb
 Test to see if PPCLASS post_process file works 
 Tests:
 1. readMasterFile works properly ---Done
-2. attempt to read velocity data for t = 0
-3. attempt to read velocity data for t 
+2. attempt to read velocity data for t = 0 --Done
+3. attempt to read velocity data for t --Done
 
 """
 
@@ -17,10 +17,18 @@ pp = PPCLASS()
 
 pp.readMasterFile('/home/samserra/Projects/QPO-hydrodynamic-simulation-analysis/Data/torusrc8p3_0p2eta1_4b3_1')
 
-# read vel data for t=0
-pp.readData(0)  #t = 0 is dumpID of 0 (zeroth time step)
+
+nStart = 0
+nStop = int(pp.mDumpIDArray[-1])
+iStepSize = 1
+
+
+for n in np.arange(nStart,nStop,iStepSize):
+    time = pp.getCurrentTime(n)
+    print("Time: {} \t Timestep: {}".format(time,n))
+
+    pp.readData(n)  #t = 0 is dumpID of 0 (zeroth time step)
+
 print(pp.velocityField)
-#print("xdata\n",pp.velocityX)
-#print("ydata\n",pp.velocityY)
 
 print("Got to the end")
