@@ -30,8 +30,11 @@ pp.readData(0)
 # plot
 
 fig, ax = plt.subplots()
-ax.contourf(pp.massDensity, cmap="PRGn")
-fig.savefig('massDensityTest.png')
+ax.scatter(pp.mZoneCenter[0::2],pp.mZoneCenter[1::2])
+fig.savefig('gridPlot.png')
+
+#ax.contourf(pp.massDensity, cmap="PRGn")
+#fig.savefig('massDensityTest.png')
 
 
 
