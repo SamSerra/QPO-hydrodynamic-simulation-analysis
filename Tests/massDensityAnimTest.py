@@ -56,7 +56,7 @@ def animate(fnum):
     # replot axis title and labels
     ax.set_xlabel('R')
     ax.set_ylabel('Z')
-    ax.set_title('mass density t = {}'.format(pp.mTimeArray[0]))
+    ax.set_title('mass density t = {}'.format(pp.mTimeArray[fnum]))
 
     # plot mass density for t = fnum
     ax.scatter(pp.mZoneCenter[0::2],pp.mZoneCenter[1::2],c=pp.mScalarFields[3,:],s=1)

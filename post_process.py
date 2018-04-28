@@ -30,8 +30,6 @@ class PPCLASS:
              
              # temp
              self.velocityField = np.array([])
-             self.velocityX = np.array([])
-             self.velocityY = np.array([])
              
              # Master file attributes
              self.mNumDomains = 0
@@ -164,7 +162,8 @@ class PPCLASS:
                 self.mScalarFields.resize((self.mNumScalarFields,maxArraySize))
                 self.mVectorFields.resize((self.mNumVectorFields,maxArraySize))
                 self.mNodePositions.resize(ndims*self.mNumNodesInZone*maxArraySize)
-                
+
+                self.velocityField.resize((ndims*maxArraySize))
                 chunkCount = 0
                 scalarFieldOffset = 0 
                 vectorFieldOffset = 0
@@ -199,10 +198,10 @@ class PPCLASS:
                         self.mNumZones += chunkSize #self.mNumZones += numInternalZones
 
                         # read mass density
-                        self.mScalarFields[3,scalarFieldOffset:scalarFieldOffset+chunkSize] = data[3*chunkSize:4*chunkSize]
+                        #self.mScalarFields[3,scalarFieldOffset:scalarFieldOffset+chunkSize] = data[3*chunkSize:4*chunkSize]
                         
                         # Read vector field data
-                        #self.velocityField=np.append(self.velocityField, data[8*chunkSize:10*chunkSize])
+                        self.velocityField[vectorFieldOffset:vectorFieldOffset+chunkSize*ndims] = data[8*chunkSize:10*chunkSize]
                         ## Grid
                         #----------------------------------------
                         sfilename = self.mRootDirName + "/" + self.mDirNameArray[idir] + "/" + \
@@ -230,6 +229,11 @@ class PPCLASS:
 
                 # Trim grid array
                 trimSize = np.arange(ndims*self.mNumZones*self.mNumNodesInZone,len(self.mNodePositions))
+
+                # trim velocity
+                timeSize = ndims*self.mNumZones
+                self.velocityField = np.delete(self.velocityField, trimSize)
+                
                 self.mNodePositions = np.delete(self.mNodePositions, trimSize, axis=0)
 
                 # Clean up
