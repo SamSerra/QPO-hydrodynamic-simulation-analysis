@@ -2,7 +2,9 @@ import numpy as np
 import h5py
 from post_process import PPCLASS
 import pdb
+import sys
 import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
 
 """
 Test to see if PPCLASS post_process reads data correctly by recreating mass density 
@@ -27,24 +29,40 @@ iStepSize = 1
 time = pp.getCurrentTime(0)
 pp.readData(0)
 
-# plot
-
+# plot 
 fig, ax = plt.subplots()
-ax.scatter(pp.mZoneCenter[0::2],pp.mZoneCenter[1::2])
-fig.savefig('gridPlot.png')
+ax.scatter(pp.mZoneCenter[0::2],pp.mZoneCenter[1::2],c=pp.mScalarFields[3,:],s=1)
+ax.set_xlabel('R')
+ax.set_ylabel('Z')
+ax.set_title('mass density t = {}'.format(pp.mTimeArray[0]))
+fig.savefig('Output/massDensityTest.png')
 
-#ax.contourf(pp.massDensity, cmap="PRGn")
-#fig.savefig('massDensityTest.png')
+# animate function
 
+def animate(fnum):
+    
+    time = pp.getCurrentTime(fnum)
 
+    # progress bar
+    sys.stdout.write('\rTime {}/{}'.format(pp.mTimeArray[fnum],pp.mTimeArray[-1]))
+    sys.stdout.flush()
+    
+    # read data
+    pp.readData(fnum)  #t = 0 is dumpID of 0 (zeroth time step)
 
+    # clear axes
+    ax.clear()
 
-'''
-for n in np.arange(nStart,nStop,iStepSize):
-    time = pp.getCurrentTime(n)
-    print("Time: {} \t Timestep: {}".format(time,n))
+    # replot axis title and labels
+    ax.set_xlabel('R')
+    ax.set_ylabel('Z')
+    ax.set_title('mass density t = {}'.format(pp.mTimeArray[0]))
 
-    pp.readData(n)  #t = 0 is dumpID of 0 (zeroth time step)
-'''
+    # plot mass density for t = fnum
+    ax.scatter(pp.mZoneCenter[0::2],pp.mZoneCenter[1::2],c=pp.mScalarFields[3,:],s=1)
+
+# animate
+anim = FuncAnimation(fig, animate, interval = 100, frames = len(pp.mTimeArray))
+anim.save('Output/massDensityAnimation.mp4')
 
 print("Got to end")
