@@ -10,8 +10,8 @@ import post_process
 ## Setup Matching Original Simulation ##
 ##------------------------------------##
 
-nx=256	#256 divisions of radius, 192 divisions of theta, 1 division of phi
-ny=192
+nx=288	#288 divisions of radius, 288 divisions of theta, 1 division of phi
+ny=288
 nz=1
 
 nDims = 2	#number of dimesions

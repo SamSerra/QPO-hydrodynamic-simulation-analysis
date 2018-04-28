@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import h5py
 from scanf import scanf
+import sys
 
 """
 Module to Supplement main.py
@@ -21,6 +22,12 @@ class PPCLASS:
              self.mScalarFields = np.array([])
              self.mVectorFields = np.array([])
 
+             # Grid
+             self.mNodePositions = np.array([])
+             self.mZoneVolume = np.array([])
+             self.mZoneLength = np.array([])
+             self.mZoneCenter = np.array([])
+             
              # temp
              self.velocityField = np.array([])
              self.velocityX = np.array([])
@@ -41,7 +48,9 @@ class PPCLASS:
              self.mTimeArray = np.array([])
              self.mDataFileNameArray = np.array([])
              self.mGridFileNameArray = np.array([])
-        
+
+             # control
+             self.isVerbose = False
         
         def readMasterFile(self, rootDir, fileStem = "Master"):
                 """
@@ -59,28 +68,33 @@ class PPCLASS:
                         # Number of domains/directories
                         descriptor, ndomains = scanf("%s %i",f.readline())
                         self.mNumDomains = ndomains
-                        print("\n{} {}".format(descriptor, self.mNumDomains))
+                        if (self.isVerbose):
+                                print("\n{} {}".format(descriptor, self.mNumDomains))
 
                         # Directory names
                         descriptor, = scanf("%s", f.readline())
-                        print("\n{}".format(descriptor))
+                        if (self.isVerbose):
+                                print("\n{}".format(descriptor))
 
                         for i in np.arange(self.mNumDomains):
                                 name, = scanf("%s", f.readline())
                                 self.mDirNameArray=np.append(self.mDirNameArray,name)
-                                print("\n{}".format(name))
+                                if (self.isVerbose):
+                                        print("\n{}".format(name))
 
                         # Number of dimensions
                         descriptor, ndims = scanf("%s %i",f.readline())
                         self.mDimension = ndims
-                        print("\n{} {}".format(descriptor, self.mDimension))
+                        if (self.isVerbose):
+                                print("\n{} {}".format(descriptor, self.mDimension))
 
                         if(ndims==1): self.mNumNodesInZone = 2
                         if(ndims==2): self.mNumNodesInZone = 4
 
                         # Number of Output Fields
                         descriptor, nfields = scanf("%s %i", f.readline())
-                        print("\n{} {}".format(descriptor,nfields))
+                        if (self.isVerbose):
+                                print("\n{} {}".format(descriptor,nfields))
 
                         # Field names
                         for i in np.arange(nfields):
@@ -96,16 +110,19 @@ class PPCLASS:
                                         print("WARNING: descriptor {} not defined".format(descriptor))
                                         exit(0)
 
-                                print("\n{} {}".format(descriptor,fieldname))
+                                if (self.isVerbose):
+                                        print("\n{} {}".format(descriptor,fieldname))
 
                         # Timesteps
                         descriptor, ntimes = scanf("%s %i",f.readline())
                         self.mNumTimeSteps = ntimes
-                        print("\n{} {}".format(descriptor,self.mNumTimeSteps))
+                        if (self.isVerbose):
+                                print("\n{} {}".format(descriptor,self.mNumTimeSteps))
 
                         # Descriptor for output
                         descriptor, = scanf("%s\n", f.readline())
-                        print("{}".format(descriptor))
+                        if (self.isVerbose):
+                                print("{}".format(descriptor))
 
                         for i in np.arange(ntimes):
                                 dump, cycle, time, fname, gname = scanf("%i %i %e %s %s", f.readline())
@@ -115,7 +132,8 @@ class PPCLASS:
                                 self.mDataFileNameArray=np.append(self.mDataFileNameArray, fname)
                                 self.mGridFileNameArray=np.append(self.mGridFileNameArray, gname)
 
-                                print("\n {} {} {} {} {}".format(dump,cycle,time,fname,gname))
+                                if (self.isVerbose):
+                                        print("\n {} {} {} {} {}".format(dump,cycle,time,fname,gname))
                                 
         def readData(self, dumpID):
                 """
@@ -135,9 +153,31 @@ class PPCLASS:
 
                 ndims = self.mDimension
 
+                # clear arrays
+                self.mScalarFields = np.array([])
+                self.mVectorFields = np.array([])
+                self.mNodePositions = np.array([])
+                self.mNumZones = 0
+                
+                # reshape field arrays to (number of fields by max size)
+                maxArraySize = 288*288
+                self.mScalarFields.resize((self.mNumScalarFields,maxArraySize))
+                self.mVectorFields.resize((self.mNumVectorFields,maxArraySize))
+                self.mNodePositions.resize(ndims*self.mNumNodesInZone*maxArraySize)
+                
+                chunkCount = 0
+                scalarFieldOffset = 0 
                 vectorFieldOffset = 0
+                nodePositionOffset = 0
                 icount = 0
                 for idir in np.arange(ndir1,ndir2,1):
+                        '''# progress bar
+                        sys.stdout.write('\rReading Data from Domain {}/{}'.format(idir+1,ndir2))
+                        sys.stdout.flush()
+                        '''
+                        
+                        ## Fields
+                        #----------------------------------
                         sfilename = self.mRootDirName + "/" + self.mDirNameArray[idir] + "/" + \
                                     self.mDataFileNameArray[dumpID]
                         datasetName = "Cosmos++"
@@ -148,21 +188,102 @@ class PPCLASS:
 
                         chunkShape = data.chunks 
                         chunkSize = chunkShape[0]
-                        print("Chunk size: {}".format(chunkSize))
 
                         # Get interal zone attribute
                         numInternalZones = data.attrs['Number of Internal Zones']
-                        print("Number of Internal Zones: {}".format(numInternalZones))
 
-                        self.mNumZones += numInternalZones
+                        if (self.isVerbose):
+                                print("Chunk size: {}".format(chunkSize))
+                                print("Number of Internal Zones: {}".format(numInternalZones))
 
+                        self.mNumZones += chunkSize #self.mNumZones += numInternalZones
+
+                        # read mass density
+                        self.mScalarFields[3,scalarFieldOffset:scalarFieldOffset+chunkSize] = data[3*chunkSize:4*chunkSize]
+                        
                         # Read vector field data
-                        self.velocityField=np.append(self.velocityField, data[8*chunkSize:10*chunkSize])
+                        #self.velocityField=np.append(self.velocityField, data[8*chunkSize:10*chunkSize])
+                        ## Grid
+                        #----------------------------------------
+                        sfilename = self.mRootDirName + "/" + self.mDirNameArray[idir] + "/" + \
+                                    self.mGridFileNameArray[dumpID]
+                        datasetName = "Cosmos++"
+                        
+                        # Open HDF5 File and read data/chunk size
+                        datafg = h5py.File(sfilename, 'r')
+                        data = datafg[datasetName]
+
+                        # Read node
+                        self.mNodePositions[nodePositionOffset:nodePositionOffset+ndims*self.mNumNodesInZone*chunkSize] = data
+                        
+                        
                         # Update shift counters
-                        vectorFieldOffset += chunkSize
-                        #vectorFieldOffset += ndims*chunkSize
+                        scalarFieldOffset += chunkSize
+                        vectorFieldOffset += ndims*chunkSize
+                        nodePositionOffset += ndims*chunkSize*self.mNumNodesInZone
                         icount += 1
-                self.velocityField = self.velocityField.flatten()
+                        
+                # Trim data arrays to length of total number of zones (chunk count)
+                trimSize = np.arange(self.mNumZones,len(self.mScalarFields[0]))
+                self.mScalarFields = np.delete(self.mScalarFields, trimSize, axis=1)
+                self.mVectorFields = np.delete(self.mVectorFields, trimSize, axis=1)
+
+                # Trim grid array
+                trimSize = np.arange(ndims*self.mNumZones*self.mNumNodesInZone,len(self.mNodePositions))
+                self.mNodePositions = np.delete(self.mNodePositions, trimSize, axis=0)
+
+                # Clean up
+                dataf.close()
+                datafg.close()
+
+                self.setZoneGeometry()
+                
+                
+        def setZoneGeometry(self):
+                ndims = self.mDimension
+                
+                # Resize arrays
+                self.mZoneVolume.resize(self.mNumZones)
+                self.mZoneLength.resize(self.mNumZones*ndims)
+                self.mZoneCenter.resize(self.mNumZones*ndims)
+                
+                if(ndims==3):
+                        pass
+                elif(ndims==2):
+                        ncnt=0
+                        for n in np.arange(self.mNumZones):
+                                xavg = .25*(self.mNodePositions[ncnt+0] + self.mNodePositions[ncnt+2]\
+                                           + self.mNodePositions[ncnt+4] + self.mNodePositions[ncnt+6])
+                                yavg = .25*(self.mNodePositions[ncnt+1] + self.mNodePositions[ncnt+3]\
+                                           + self.mNodePositions[ncnt+5] + self.mNodePositions[ncnt+7])
+                                dx = .5*(np.abs(self.mNodePositions[ncnt + 0] - xavg) + \
+                                         np.abs(self.mNodePositions[ncnt + 2] - xavg) + \
+                                         np.abs(self.mNodePositions[ncnt + 4] - xavg) + \
+                                         np.abs(self.mNodePositions[ncnt + 6] - xavg))
+
+                                dy = .5*(np.abs(self.mNodePositions[ncnt + 1] - yavg) + \
+                                         np.abs(self.mNodePositions[ncnt + 3] - yavg) + \
+                                         np.abs(self.mNodePositions[ncnt + 5] - yavg) + \
+                                         np.abs(self.mNodePositions[ncnt + 7] - yavg))
+
+                                self.mZoneVolume[n] = dx*dy
+                                
+                                self.mZoneLength[n*ndims + 0] = dx
+                                self.mZoneLength[n*ndims + 1] = dy
+                                
+                                self.mZoneCenter[n*ndims + 0] = xavg
+                                self.mZoneCenter[n*ndims + 1] = yavg
+
+                                ncnt += ndims*self.mNumNodesInZone
+                elif(ndims==1):
+                        pass
+                else:
+                        print("****ERROR-volume: mDimension is incorrect")
+                        sys.exit(0)
+        
+#--------------------------------------------------------------------------------
+        def getCurrentTime(self, dumpID): return self.mTimeArray[dumpID]
+        
 ## Other
 ## ------------------------------------------------------------------##
 def ConvertToPolar(nDims, xArray, yArray, zArray = np.zeros(1,)):
